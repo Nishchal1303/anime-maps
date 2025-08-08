@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Zoom One Piece</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=no">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      color: white;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      touch-action: none;
+    }
+
+    h1 {
+      margin: 10px;
+    }
+
+    #image-container {
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid #444;
+      background-color: #000;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #zoom-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
+      transition: transform 0.1s ease;
+      user-select: none;
+      -webkit-user-drag: none;
+      max-width: none;
+    }
+
+    .controls {
+      padding: 10px;
+      background: #222;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Zoom: One Piece</h1>
+
+  <div id="image-container">
+    <img id="zoom-image" src="onepiece.jpg" alt="One Piece">
+  </div>
+
+  <div class="controls">
+    <button onclick="zoomIn()">Zoom In</button>
+    <button onclick="zoomOut()">Zoom Out</button>
+    <button onclick="resetZoom()">Reset</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
+  </div>
+
+  <script>
+    const img = document.getElementById('zoom-image');
+    const container = document.getElementById('image-container');
+
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    function updateTransform() {
+      img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    function zoomIn() {
+      scale *= 1.2;
+      updateTransform();
+    }
+
+    function zoomOut() {
+      scale /= 1.2;
+      updateTransform();
+    }
+
+    function resetZoom() {
+      scale = 1;
+      translateX = 0;
+      translateY = 0;
+      updateTransform();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Mouse wheel zoom
+    container.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const rect = img.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+      const zoomFactor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
+      const oldScale = scale;
+      scale *= zoomFactor;
+      translateX -= (mouseX / oldScale) * (zoomFactor - 1);
+      translateY -= (mouseY / oldScale) * (zoomFactor - 1);
+      updateTransform();
+    });
+
+    // Mouse drag
+    container.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      container.style.cursor = 'grabbing';
+      startX = e.clientX;
+      startY = e.clientY;
+    });
+
+    container.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      translateX += dx;
+      translateY += dy;
+      updateTransform();
+    });
+
+    container.addEventListener('mouseup', () => {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mouseleave', () => {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    });
+
+    // Mobile: touch support
+    let lastTouchDistance = null;
+    let lastTouchX = null;
+    let lastTouchY = null;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        lastTouchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+      }
+    }, { passive: false });
+
+    container.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1 && lastTouchX !== null) {
+        // Pan
+        const dx = e.touches[0].clientX - lastTouchX;
+        const dy = e.touches[0].clientY - lastTouchY;
+        translateX += dx;
+        translateY += dy;
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+        updateTransform();
+      } else if (e.touches.length === 2) {
+        // Pinch to zoom
+        const newDist = getTouchDistance(e.touches[0], e.touches[1]);
+        if (lastTouchDistance !== null) {
+          const zoomFactor = newDist / lastTouchDistance;
+          scale *= zoomFactor;
+          lastTouchDistance = newDist;
+          updateTransform();
+        }
+      }
+    }, { passive: false });
+
+    container.addEventListener('touchend', () => {
+      lastTouchDistance = null;
+      lastTouchX = null;
+      lastTouchY = null;
+    });
+
+    function getTouchDistance(touch1, touch2) {
+      const dx = touch2.clientX - touch1.clientX;
+      const dy = touch2.clientY - touch1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Prevent image dragging
+    img.ondragstart = () => false;
+  </script>
+
+</body>
+</html>
